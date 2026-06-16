@@ -1,0 +1,6 @@
+{
+  "name": "Lean Time",
+  "description": "极简高奢时间展板与AI深度专注诊断教练",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom CSS Variable Bindings for dynamic theme rendering */
+:root {
+  --accent-glow: rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="light-minimal"] {
+  --bg-main: #f8fafc; /* slate-50 */
+  --bg-card: #ffffff;
+  --border-color: rgba(148, 163, 184, 0.12);
+  --text-main: #0f172a; /* slate-900 */
+  --text-muted: #64748b; /* slate-500 */
+  --accent-primary: #10b981; /* emerald-500 */
+  --accent-secondary: #059669;
+  --accent-glow: rgba(16, 185, 129, 0.1);
+  --accent-light: #ecfdf5;
+  --card-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.06);
+}
+
+[data-theme="nordic-obsidian"] {
+  --bg-main: #090a0f; /* ultra matte pitch-black */
+  --bg-card: #12131a; /* deep sleek card obsidian */
+  --border-color: rgba(255, 255, 255, 0.05);
+  --text-main: #f8fafc; /* slate-50 */
+  --text-muted: #94a3b8; /* slate-400 */
+  --accent-primary: #8b5cf6; /* violet-500 */
+  --accent-secondary: #6366f1; /* indigo-500 */
+  --accent-glow: rgba(139, 92, 246, 0.12);
+  --accent-light: rgba(139, 92, 246, 0.07);
+  --card-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="warm-oatmeal"] {
+  --bg-main: #f4efebd9; /* warm organic linen sand oatmeal */
+  --bg-card: #fdfcfb;
+  --border-color: rgba(120, 113, 108, 0.16);
+  --text-main: #44403c; /* stone-800 */
+  --text-muted: #78716c; /* stone-500 */
+  --accent-primary: #c2410c; /* amber-700 / dark-orange */
+  --accent-secondary: #ea580c;
+  --accent-glow: rgba(194, 65, 12, 0.08);
+  --accent-light: #fffdfa;
+  --card-shadow: 0 4px 20px -2px rgba(120, 113, 108, 0.08);
+}
+
+/* Base resets & transitions for high luxury UI feeling */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.custom-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-card:hover {
+  border-color: rgba(var(--border-color), 0.2);
+}
+
+/* Glass panel */
+.glass-panel {
+  backdrop-filter: blur(24px);
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="nordic-obsidian"] .glass-panel {
+  background-color: rgba(18, 19, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="warm-oatmeal"] .glass-panel {
+  background-color: rgba(253, 252, 251, 0.75);
+  border: 1px solid rgba(120, 113, 108, 0.12);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
