@@ -13,14 +13,16 @@ interface AICoachPanelProps {
   loading: boolean;
   onTriggerAnalyze: () => void;
   isFallback: boolean;
+  analysisMode?: 'local' | 'ai';
+  onSwitchMode?: (mode: 'local' | 'ai') => void;
 }
 
 const LOADING_STATUSES = [
-  '正在检索本期专注时序分布...',
-  '正在进行基于认知行为学的时间差校准...',
-  '评价注意力标准差与前额叶疲劳指数...',
-  '定制专属脑部精力退火自律医学指令...',
-  '正在整理高维度时间精神纲领...'
+  '正在统计本期时序分布...',
+  '正在对比目标达成指数...',
+  '评价近期持续打卡稳定性...',
+  '量身设计简单的快乐自律指南...',
+  '正在书写暖心的诊断小卡片...'
 ];
 
 export default function AICoachPanel({
@@ -28,8 +30,11 @@ export default function AICoachPanel({
   loading,
   onTriggerAnalyze,
   isFallback,
+  analysisMode = 'local',
+  onSwitchMode,
 }: AICoachPanelProps) {
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   // Rotate loading text occasionally so user remains highly engaged
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function AICoachPanel({
       setLoadingTextIndex(0);
       interval = setInterval(() => {
         setLoadingTextIndex((prev) => (prev + 1) % LOADING_STATUSES.length);
-      }, 2500);
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [loading]);
@@ -52,19 +57,19 @@ export default function AICoachPanel({
       {/* Header */}
       <div className="flex items-center justify-between mb-5 relative z-10 border-b border-[var(--border-color)] pb-4">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent-primary)] animate-pulse">
-            <Sparkles className="w-4 h-4" />
+          <div className="p-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent-primary)]">
+            <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
           <div>
             <h3 className="font-display font-semibold text-main text-base flex items-center gap-1.5">
-              <span>AI 深度专注诊断教练</span>
-              {isFallback && (
+              <span>专属专注诊断教练</span>
+              {isFallback && analysisMode === 'ai' && (
                 <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider">
-                  Edge Local Engine
+                  已温和降级至本地算法
                 </span>
               )}
             </h3>
-            <p className="text-[10px] text-muted tracking-wide mt-0.5">配合脑科学理论的时间主权管理方案</p>
+            <p className="text-[10px] text-muted tracking-wide mt-0.5">提供温暖、正面鼓励的学习调频方案</p>
           </div>
         </div>
 
@@ -75,9 +80,90 @@ export default function AICoachPanel({
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-light)] text-[var(--accent-primary)] hover:brightness-95 disabled:opacity-50 transition cursor-pointer select-none font-semibold font-display"
         >
           <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>重新诊断</span>
+          <span>刷新诊断</span>
         </button>
       </div>
+
+      {/* 模式选择与工作原理说明 */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 mb-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[var(--border-color)]/60 text-xs">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="font-extrabold text-[var(--text-main)] shrink-0">分析方案:</span>
+          <div className="flex bg-slate-200/50 dark:bg-slate-800/60 p-0.5 rounded-lg border border-[var(--border-color)]/30">
+            <button
+              onClick={() => onSwitchMode && onSwitchMode('local')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all duration-200 select-none ${
+                analysisMode === 'local'
+                  ? 'bg-[var(--bg-card)] text-[var(--accent-primary)] shadow-xs'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              内置基础分析
+            </button>
+            <button
+              onClick={() => onSwitchMode && onSwitchMode('ai')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all duration-200 select-none ${
+                analysisMode === 'ai'
+                  ? 'bg-[var(--bg-card)] text-[var(--accent-primary)] shadow-xs'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              云端 AI 深度分析
+            </button>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setShowHowItWorks(!showHowItWorks)}
+          className="text-[11px] text-[var(--accent-primary)] hover:brightness-95 transition-all duration-150 font-bold flex items-center gap-1 select-none shrink-0 self-end sm:self-auto"
+        >
+          <Compass className="w-3.5 h-3.5" />
+          <span>{showHowItWorks ? '收起原理说明' : '教练工作原理？'}</span>
+        </button>
+      </div>
+
+      {/* 工作原理卡片 */}
+      <AnimatePresence>
+        {showHowItWorks && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden mb-5"
+          >
+            <div className="p-4 rounded-xl bg-amber-50/40 dark:bg-slate-900/40 border border-dashed border-amber-200 dark:border-slate-800 text-xs text-[var(--text-muted)] leading-relaxed space-y-2">
+              <p className="font-extrabold text-[var(--text-main)] flex items-center gap-1.5 text-[12px] text-amber-800 dark:text-amber-300">
+                <Brain className="w-4 h-4" /> 专注诊断教练是如何工作的？
+              </p>
+              <p>为了给您提供最合适、无压力的心理自律反馈，系统设计了两个灵活的运行方案：</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 rounded-lg bg-orange-50/40 dark:bg-slate-800/20 border border-[var(--border-color)]/10">
+                  <p className="font-bold text-amber-950 dark:text-amber-200 text-[11px] flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 text-orange-500" />
+                    1. 内置基础数据分析 (本地零配置)
+                  </p>
+                  <p className="mt-1 text-[11px]">
+                    完全运行在本地。统计您本周或本月的<strong>累计总时间</strong>、<strong>打卡活跃天数</strong>以及<strong>单日最高时长</strong>，利用内置分析算法快速提炼优点并输出，保障离线或无 AI 预配置时的基本分析逻辑。
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-50/40 dark:bg-slate-800/20 border border-[var(--border-color)]/10">
+                  <p className="font-bold text-blue-900 dark:text-blue-200 text-[11px] flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                    2. 云端 AI 深度分析 (Gemini 热能驱动)
+                  </p>
+                  <p className="mt-1 text-[11px]">
+                    需要云端配置 <code>GEMINI_API_KEY</code> 秘匙。AI 扮演温和热诚、极富爱心的贴地学习树洞，用大白话将数据解构成最鼓舞人心的日常干货方案，杜绝枯燥复杂的术语。
+                  </p>
+                </div>
+              </div>
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-400 mt-1">
+                💡 <b>温馨提示</b>：若选择云端 AI 分析但未配置大模型密钥，系统将自动降级并以本地算法代替，保证正常展示无错乱！
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {loading ? (

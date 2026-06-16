@@ -27,6 +27,12 @@ export interface AICoachAnalysis {
   generatedAt: string;
 }
 
+export interface CustomLLMConfig {
+  provider: 'gemini' | 'siliconflow' | 'zhipu' | 'deepseek';
+  apiKey: string;
+  model: string;
+}
+
 // Initial/default states helper
 export const DEFAULT_GOALS: UserGoals = {
   weeklyGoal: 15,

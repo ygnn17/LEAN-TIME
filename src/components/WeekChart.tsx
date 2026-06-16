@@ -18,17 +18,25 @@ const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Calculate scaling
   const maxHours = Math.max(...hoursData, 6); // default standard scale to at least 6h
   const chartMax = Math.ceil(maxHours + 1.5);
 
+  const containerWidth = 500;
   const containerHeight = 280;
-  const paddingBottom = 40;
+  const paddingBottom = 50;
   const paddingTop = 30;
-  const paddingLeft = 35;
+  const paddingLeft = 42;
   const paddingRight = 15;
 
-  const graphHeight = containerHeight - paddingTop - paddingBottom;
+  const graphWidth = containerWidth - paddingLeft - paddingRight; // 443
+  const graphHeight = containerHeight - paddingTop - paddingBottom; // 200
 
   return (
     <div className="custom-card rounded-2xl p-6 relative select-none">
@@ -51,8 +59,13 @@ export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartPro
       </div>
 
       <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
-        {/* SVG Canvas */}
-        <svg className="w-full h-full overflow-visible">
+        {/* SVG Canvas with calibrated viewBox for responsive scaling */}
+        <svg 
+          viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+          width="100%"
+          height="100%"
+          className="w-full h-full overflow-visible"
+        >
           {/* Gradients */}
           <defs>
             <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
@@ -74,7 +87,7 @@ export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartPro
                 <line
                   x1={paddingLeft}
                   y1={y}
-                  x2="100%"
+                  x2={containerWidth - paddingRight}
                   y2={y}
                   stroke="currentColor"
                   className="text-[var(--border-color)]"
@@ -95,19 +108,32 @@ export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartPro
 
           {/* Render Bars */}
           {hoursData.map((hours, index) => {
-            const widthPct = (100 - paddingLeft) / 7;
-            const barWidthMultiplier = 0.44; // Bar thickness
+            const colWidth = graphWidth / 7;
+            const barWidthMultiplier = 0.44; // Bar thickness ratio
+            const widthVal = colWidth * barWidthMultiplier;
             
-            // X positioning
-            const xOffset = paddingLeft + (index * widthPct) + (widthPct * (1 - barWidthMultiplier) / 2);
-            const widthVal = widthPct * barWidthMultiplier;
+            // X positioning centered inside day partition
+            const xOffset = paddingLeft + (index * colWidth) + (colWidth * (1 - barWidthMultiplier) / 2);
 
-            // Y height calculation
-            const barHeight = hours > 0 ? (hours / chartMax) * graphHeight : 2; // subtle base pixel for zero
-            const yVal = containerHeight - paddingBottom - barHeight;
+            // Y height calculation based on mount state for initial transition
+            const finalHeight = hours > 0 ? (hours / chartMax) * graphHeight : 2; // subtle base pixel for zero
+            const finalY = containerHeight - paddingBottom - finalHeight;
+
+            const barHeight = isMounted ? finalHeight : 0;
+            const yVal = isMounted ? finalY : containerHeight - paddingBottom;
 
             const isHovered = hoveredIndex === index;
             const isZero = hours === 0;
+
+            // Formulate date label (e.g., "16日")
+            const dateStr = dates[index];
+            let dayLabel = '';
+            if (dateStr) {
+              const parts = dateStr.split('-');
+              if (parts.length === 3) {
+                dayLabel = `${parseInt(parts[2], 10)}日`;
+              }
+            }
 
             return (
               <g
@@ -119,59 +145,65 @@ export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartPro
               >
                 {/* Background Full Column Hover Receiver */}
                 <rect
-                  x={paddingLeft + (index * widthPct)}
+                  x={paddingLeft + (index * colWidth)}
                   y={paddingTop}
-                  width={widthPct}
+                  width={colWidth}
                   height={graphHeight}
                   fill="transparent"
                 />
 
                 {/* Main animated bar pillar */}
-                <motion.rect
+                <rect
                   x={xOffset}
                   y={yVal}
                   width={widthVal}
                   height={barHeight}
                   rx={Math.min(widthVal / 2, 8)}
                   fill={isHovered ? "url(#activeBarGradient)" : "url(#barGradient)"}
-                  initial={{ height: 0, y: containerHeight - paddingBottom }}
-                  animate={{ height: barHeight, y: yVal }}
-                  transition={{ 
-                    type: "spring", 
-                    stiffness: 85, 
-                    damping: 15,
-                    delay: index * 0.04 
-                  }}
-                  className="transition-all duration-300 shadow-sm"
+                  className="shadow-xs"
                   style={{
-                    filter: isHovered ? "drop-shadow(0px 4px 12px var(--accent-glow))" : "none"
+                    filter: isHovered ? "drop-shadow(0px 4px 12px var(--accent-glow))" : "none",
+                    transition: 'y 0.6s cubic-bezier(0.16, 1, 0.3, 1), height 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
                   }}
                 />
 
                 {/* Little organic value bead on top */}
                 {hours > 0 && !isZero && (
-                  <motion.circle
+                  <circle
                     cx={xOffset + widthVal / 2}
                     cy={yVal}
-                    r={3}
-                    className="fill-[var(--bg-card)] stroke-[var(--accent-primary)] stroke-2"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: isHovered ? 1.4 : 1 }}
-                    transition={{ duration: 0.2 }}
+                    r={isHovered ? 4.5 : 3}
+                    className="fill-[var(--bg-card)] stroke-[var(--accent-primary)] stroke-2 transition-all duration-300"
+                    style={{
+                      transition: 'cy 0.6s cubic-bezier(0.16, 1, 0.3, 1), r 0.15s ease'
+                    }}
                   />
                 )}
 
-                {/* X Axis text label */}
+                {/* Weekday Label */}
                 <text
-                  x={paddingLeft + (index * widthPct) + (widthPct / 2)}
-                  y={containerHeight - 12}
+                  x={paddingLeft + (index * colWidth) + (colWidth / 2)}
+                  y={containerHeight - 27}
                   textAnchor="middle"
                   className={`
-                    text-xs font-semibold select-none transition-colors duration-200
-                    ${isHovered ? 'fill-[var(--accent-primary)] font-bold' : 'fill-[var(--text-muted)]'}
+                    text-xs font-bold select-none transition-colors duration-200
+                    ${isHovered ? 'fill-[var(--accent-primary)] font-extrabold text-sm' : 'fill-[var(--text-main)]'}
                   `}
                 >
                   {WEEKDAYS[index]}
+                </text>
+
+                {/* Date sub-header Label */}
+                <text
+                  x={paddingLeft + (index * colWidth) + (colWidth / 2)}
+                  y={containerHeight - 11}
+                  textAnchor="middle"
+                  className={`
+                    font-mono text-[9px] select-none transition-colors duration-200 font-semibold
+                    ${isHovered ? 'fill-[var(--accent-primary)]' : 'fill-[var(--text-muted)]'}
+                  `}
+                >
+                  {dayLabel}
                 </text>
               </g>
             );
@@ -180,45 +212,42 @@ export default function WeekChart({ hoursData, dates, onBarClick }: WeekChartPro
 
         {/* Dynamic Float Tooltip Portal (Glass Styled) */}
         <AnimatePresence>
-          {hoveredIndex !== null && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="absolute glass-panel p-3.5 rounded-xl border border-[var(--border-color)] shadow-xl pointer-events-none z-30 flex flex-col gap-1 text-xs"
-              style={{
-                left: `${Math.min(
-                  Math.max(
-                    10, 
-                    paddingLeft + (hoveredIndex * (100 - paddingLeft) / 7) + 5
-                  ), 
-                  80
-                )}%`,
-                top: `${Math.max(
-                  15, 
-                  containerHeight - paddingBottom - ((hoursData[hoveredIndex] / chartMax) * graphHeight) - 82
-                )}px`,
-              }}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-[var(--text-main)] font-display">
-                <Clock className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-                <span>{WEEKDAYS[hoveredIndex]} 专注纪实</span>
-              </div>
-              <div className="text-[10px] text-muted">
-                {dates[hoveredIndex]}
-              </div>
-              <div className="font-mono text-base font-extrabold text-[var(--text-main)] mt-1 flex items-baseline gap-0.5">
-                <span>{hoursData[hoveredIndex].toFixed(1)}</span>
-                <span className="text-xs text-muted font-normal">小时</span>
-                {hoursData[hoveredIndex] >= 4 && (
-                  <span className="ml-1.5 inline-flex items-center px-1 py-0.5 rounded bg-orange-500/10 text-orange-500 text-[9px] font-bold gap-0.5">
-                    <Flame className="w-2.5 h-2.5 fill-current" /> High Flow
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          )}
+          {hoveredIndex !== null && (() => {
+            const colWidth = graphWidth / 7;
+            const xPercent = ((paddingLeft + (hoveredIndex * colWidth) + (colWidth / 2)) / containerWidth) * 100;
+            const yPixel = containerHeight - paddingBottom - ((hoursData[hoveredIndex] / chartMax) * graphHeight) - 86;
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute glass-panel p-3.5 rounded-xl border border-[var(--border-color)] shadow-xl pointer-events-none z-30 flex flex-col gap-1 text-xs -translate-x-1/2"
+                style={{
+                  left: `${xPercent}%`,
+                  top: `${Math.max(10, yPixel)}px`,
+                }}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-[var(--text-main)] font-display whitespace-nowrap">
+                  <Clock className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>{WEEKDAYS[hoveredIndex]} 专注纪实</span>
+                </div>
+                <div className="text-[10px] text-muted font-medium">
+                  {dates[hoveredIndex]}
+                </div>
+                <div className="font-mono text-base font-extrabold text-[var(--text-main)] mt-1 flex items-baseline gap-0.5 whitespace-nowrap">
+                  <span>{hoursData[hoveredIndex].toFixed(1)}</span>
+                  <span className="text-xs text-muted font-normal">小时</span>
+                  {hoursData[hoveredIndex] >= 4 && (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 text-[9px] font-bold gap-0.5 leading-none">
+                      <Flame className="w-2.5 h-2.5 fill-current" /> High Flow
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
       </div>
     </div>
