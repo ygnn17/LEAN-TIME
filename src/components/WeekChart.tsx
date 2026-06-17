@@ -192,10 +192,11 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                 {/* Background Full Column Hover Receiver */}
                 <rect
                   x={paddingLeft + (index * colWidth)}
-                  y={paddingTop}
+                  y={0}
                   width={colWidth}
-                  height={graphHeight}
+                  height={containerHeight}
                   fill="transparent"
+                  pointerEvents="all"
                 />
 
                 {/* Daytime Bar (Going UP) */}
@@ -207,7 +208,7 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                     height={dayHeight}
                     rx={2}
                     fill={isHovered ? "url(#dayBarHover)" : "url(#dayBarGradient)"}
-                    className="transition-all duration-300"
+                    className="transition-all duration-300 pointer-events-none"
                     style={{
                       transition: 'y 0.5s cubic-bezier(0.16, 1, 0.3, 1), height 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
                       filter: isHovered ? "drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.4))" : "none"
@@ -224,7 +225,7 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                     height={nightHeight}
                     rx={2}
                     fill={isHovered ? "url(#nightBarHover)" : "url(#nightBarGradient)"}
-                    className="transition-all duration-300"
+                    className="transition-all duration-300 pointer-events-none"
                     style={{
                       transition: 'height 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
                       filter: isHovered ? "drop-shadow(0px 0px 8px rgba(99, 102, 241, 0.4))" : "none"
@@ -238,7 +239,7 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                     cx={xOffset + widthVal / 2}
                     cy={zeroY}
                     r={2.5}
-                    className="fill-white stroke-[var(--accent-primary)] stroke-1"
+                    className="fill-white stroke-[var(--accent-primary)] stroke-1 pointer-events-none"
                   />
                 )}
 
@@ -248,8 +249,8 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                   y={containerHeight - 27}
                   textAnchor="middle"
                   className={`
-                    text-xs font-bold select-none transition-colors duration-200
-                    ${isHovered ? 'fill-[var(--accent-primary)] font-extrabold scale-105' : 'fill-[var(--text-main)]'}
+                    text-xs font-bold select-none transition-colors duration-200 pointer-events-none
+                    ${isHovered ? 'fill-[var(--accent-primary)] font-bold' : 'fill-[var(--text-main)]'}
                   `}
                 >
                   {WEEKDAYS[index]}
@@ -261,7 +262,7 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                   y={containerHeight - 11}
                   textAnchor="middle"
                   className={`
-                    font-mono text-[9px] select-none transition-colors duration-200 font-semibold
+                    font-mono text-[9px] select-none transition-colors duration-200 font-semibold pointer-events-none
                     ${isHovered ? 'fill-[var(--accent-primary)]' : 'fill-[var(--text-muted)]'}
                   `}
                 >

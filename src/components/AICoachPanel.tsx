@@ -214,6 +214,20 @@ export default function AICoachPanel({
             transition={{ duration: 0.45 }}
             className="space-y-5 relative z-10"
           >
+            {isFallback && analysisMode === 'ai' && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-400 flex items-start gap-2.5">
+                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-extrabold flex items-center gap-1.5 text-[11px] text-amber-900 dark:text-amber-300">
+                    已安全降级为内置算法（云端公共 API 繁忙/配额超限）
+                  </p>
+                  <p className="text-[10px] text-amber-700/90 dark:text-amber-400 font-medium leading-relaxed">
+                    由于公共大语言模型当前处于高考量或访问配额上限（即 429/503 报错状态），系统为您无缝启动了内置教练算法。若需保持 100% 畅通且定制化的 AI 互动，欢迎随时点击右上角<b>“选项设置”</b>，在里面填写您个人专用的 Gemini 或 DeepSeek 密钥！
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Section 1: Time Pattern diagnostics */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[var(--border-color)] relative overflow-hidden transition-all duration-300">
               <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent-primary)]" />

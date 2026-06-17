@@ -41,26 +41,69 @@ import AICoachPanel from './components/AICoachPanel';
 import SettingsMenu from './components/SettingsMenu';
 import LLMConfigModal from './components/LLMConfigModal';
 
-const SEED_RECORDS: StudyRecord = {
-  // Set up some realistic premium seeded learning data for the last 15 days so the dashboard looks loaded & elite
-  '2026-06-08': { day: 2.5, night: 1.0 },
-  '2026-06-09': { day: 3.0, night: 1.0 },
-  '2026-06-10': { day: 4.0, night: 1.5 },
-  '2026-06-11': { day: 1.0, night: 1.0 },
-  '2026-06-12': { day: 4.5, night: 2.0 },
-  '2026-06-13': { day: 5.0, night: 3.0 },
-  '2026-06-14': { day: 0.0, night: 0.0 },
-  '2026-06-15': { day: 3.0, night: 1.5 },
-  '2026-06-16': { day: 3.5, night: 1.5 }, // Today
-};
-
 export default function App() {
-  // Global React states
-  const [records, setRecords] = useState<StudyRecord>({});
-  const [theme, setTheme] = useState<ThemeType>('light-minimal');
-  const [view, setView] = useState<ViewType>('week');
-  const [goals, setGoals] = useState<UserGoals>(DEFAULT_GOALS);
-  const [navDate, setNavDate] = useState<Date>(new Date('2026-06-16')); // anchor centered on simulated today
+  // Global React states with lazy state initializers to guarantee persistent state from localStorage immediately on first render
+  const [records, setRecords] = useState<StudyRecord>(() => {
+    if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('lean_study_dashboard_v3');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (parsed.records) return parsed.records;
+        } catch (e) {
+          console.error('Error initializing records state', e);
+        }
+      }
+    }
+    return {};
+  });
+
+  const [theme, setTheme] = useState<ThemeType>(() => {
+    if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('lean_study_dashboard_v3');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (parsed.theme) return parsed.theme;
+        } catch (e) {
+          console.error('Error initializing theme state', e);
+        }
+      }
+    }
+    return 'light-minimal';
+  });
+
+  const [view, setView] = useState<ViewType>(() => {
+    if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('lean_study_dashboard_v3');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (parsed.view) return parsed.view;
+        } catch (e) {
+          console.error('Error initializing view state', e);
+        }
+      }
+    }
+    return 'week';
+  });
+
+  const [goals, setGoals] = useState<UserGoals>(() => {
+    if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('lean_study_dashboard_v3');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (parsed.goals) return parsed.goals;
+        } catch (e) {
+          console.error('Error initializing goals state', e);
+        }
+      }
+    }
+    return DEFAULT_GOALS;
+  });
+
+  const [navDate, setNavDate] = useState<Date>(new Date()); // anchor centered on today
 
   // App overlay controls
   const [selectedDateForRegister, setSelectedDateForRegister] = useState<string>('');
@@ -69,42 +112,48 @@ export default function App() {
   const [isLLMConfigOpen, setIsLLMConfigOpen] = useState(false);
 
   // AI analysis engine state
-  const [analysisMode, setAnalysisMode] = useState<'local' | 'ai'>('local');
+  const [analysisMode, setAnalysisMode] = useState<'local' | 'ai'>(() => {
+    if (typeof window !== 'undefined') {
+      const local = localStorage.getItem('lean_study_dashboard_v3');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (parsed.analysisMode) return parsed.analysisMode;
+        } catch (e) {
+          console.error('Error initializing analysisMode state', e);
+        }
+      }
+    }
+    return 'ai';
+  });
+
   const [aiAnalysis, setAiAnalysis] = useState<AICoachAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [isFallback, setIsFallback] = useState(false);
 
-  // 1. Initial hydration
+  // 1. Initial document layout & theme hydration on mount
   useEffect(() => {
     const local = localStorage.getItem('lean_study_dashboard_v3');
     if (local) {
       try {
         const parsed = JSON.parse(local);
-        if (parsed.records) setRecords(parsed.records);
         if (parsed.theme) {
-          setTheme(parsed.theme);
           document.documentElement.setAttribute('data-theme', parsed.theme);
         } else {
           document.documentElement.setAttribute('data-theme', 'light-minimal');
         }
-        if (parsed.goals) setGoals(parsed.goals);
-        if (parsed.view) setView(parsed.view);
-        if (parsed.analysisMode) setAnalysisMode(parsed.analysisMode);
       } catch (e) {
-        console.error('Failed to parse local storage key', e);
-        // Fallback seed
-        setRecords(SEED_RECORDS);
+        console.error('Failed to parse local storage theme', e);
         document.documentElement.setAttribute('data-theme', 'light-minimal');
       }
     } else {
-      // Warm start: seeds data on first loading
-      setRecords(SEED_RECORDS);
+      // Warm start: write initial defaults once on the absolute first mount and prepare Theme style
       localStorage.setItem('lean_study_dashboard_v3', JSON.stringify({
-        records: SEED_RECORDS,
+        records: {},
         theme: 'light-minimal',
         goals: DEFAULT_GOALS,
         view: 'week',
-        analysisMode: 'local'
+        analysisMode: 'ai'
       }));
       document.documentElement.setAttribute('data-theme', 'light-minimal');
     }
