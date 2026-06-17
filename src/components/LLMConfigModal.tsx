@@ -42,28 +42,47 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
   useEffect(() => {
     if (isOpen) {
       try {
-        const stored = localStorage.getItem('lean_study_api_config');
+        let stored = localStorage.getItem('lean_study_api_config');
+        let parsed = stored ? JSON.parse(stored) as StoredAPIConfig : null;
+        let needsWrite = false;
+
+        if (!parsed || !parsed.gemini) {
+          parsed = {
+            activeProvider: 'gemini',
+            gemini: { apiKey: '', model: 'gemini-3.5-flash' },
+            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-V3' },
+            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4-flash' },
+            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-chat' }
+          };
+          needsWrite = true;
+        }
+
+        if (needsWrite) {
+          localStorage.setItem('lean_study_api_config', JSON.stringify(parsed));
+          stored = JSON.stringify(parsed);
+        }
+
         if (stored) {
-          const parsed = JSON.parse(stored) as StoredAPIConfig;
+          const parsedConfig = JSON.parse(stored) as StoredAPIConfig;
           
           // backwards compatibility and schema safety check
           const updated: StoredAPIConfig = {
-            activeProvider: parsed.activeProvider || 'gemini',
+            activeProvider: parsedConfig.activeProvider || 'gemini',
             gemini: {
-              apiKey: parsed.gemini?.apiKey || '',
-              model: parsed.gemini?.model || 'gemini-3.5-flash'
+              apiKey: parsedConfig.gemini?.apiKey || '',
+              model: parsedConfig.gemini?.model || 'gemini-3.5-flash'
             },
             siliconflow: {
-              apiKey: parsed.siliconflow?.apiKey || '',
-              model: parsed.siliconflow?.model || 'deepseek-ai/DeepSeek-V3'
+              apiKey: parsedConfig.siliconflow?.apiKey || '',
+              model: parsedConfig.siliconflow?.model || 'deepseek-ai/DeepSeek-V3'
             },
             zhipu: {
-              apiKey: parsed.zhipu?.apiKey || '',
-              model: parsed.zhipu?.model || 'glm-4-flash'
+              apiKey: parsedConfig.zhipu?.apiKey || '',
+              model: parsedConfig.zhipu?.model || 'glm-4-flash'
             },
             deepseek: {
-              apiKey: parsed.deepseek?.apiKey || '',
-              model: parsed.deepseek?.model || 'deepseek-chat'
+              apiKey: parsedConfig.deepseek?.apiKey || '',
+              model: parsedConfig.deepseek?.model || 'deepseek-chat'
             }
           };
           setConfig(updated);

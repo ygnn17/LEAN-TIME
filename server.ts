@@ -34,8 +34,7 @@ function getGeminiClient(): GoogleGenAI | null {
 
 // 1. API: AI Time Diagnosis & Habits Planner
 app.post("/api/ai-analyze", async (req, res) => {
-  try {
-    const { totalHours, avgHours, activeDays, maxDayHours, maxDayName, viewType, dateRange, recordsSlice, customConfig } = req.body;
+  const { totalHours, avgHours, activeDays, maxDayHours, maxDayName, viewType, dateRange, recordsSlice, customConfig } = req.body;
 
     const reportPrompt = `
       根据用户的专注学习时长数据，进行一次通俗耐看、极其温暖且正面鼓励的进度剖析，并设计合理的、可轻松达成的建议。
@@ -71,7 +70,8 @@ app.post("/api/ai-analyze", async (req, res) => {
     const systemInstruction = "你是一位极度贴近生活、专注研究温暖时间治愈学和激励自律的成长教练。你专注于产出结构清晰、大白话解释的激励方案。切忌任何枯燥的学术说教，要给予使用者如释重负的踏实感。请严格按照JSON输出：patternTitle, patternContent, strengthTitle, strengthContent, actionTitle, actionPoints, metricsContext。";
 
     // Scenario A: Client configured custom model API keys (Gemini, DeepSeek, Zhipu or SiliconFlow)
-    if (customConfig && customConfig.apiKey && customConfig.provider) {
+    try {
+      if (customConfig && customConfig.apiKey && customConfig.provider) {
       const { provider, apiKey, model } = customConfig;
 
       if (provider === "gemini") {
@@ -81,29 +81,56 @@ app.post("/api/ai-analyze", async (req, res) => {
             headers: { 'User-Agent': 'aistudio-build-custom' }
           }
         });
-        const chosenModel = model || "gemini-3.5-flash";
+        const chosenModel = model || "gemini-1.5-flash";
 
-        const response = await client.models.generateContent({
-          model: chosenModel,
-          contents: reportPrompt,
-          config: {
-            systemInstruction: systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                patternTitle: { type: Type.STRING },
-                patternContent: { type: Type.STRING },
-                strengthTitle: { type: Type.STRING },
-                strengthContent: { type: Type.STRING },
-                actionTitle: { type: Type.STRING },
-                actionPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
-                metricsContext: { type: Type.STRING }
-              },
-              required: ["patternTitle", "patternContent", "strengthTitle", "strengthContent", "actionTitle", "actionPoints", "metricsContext"]
+        let response;
+        try {
+          response = await client.models.generateContent({
+            model: chosenModel,
+            contents: reportPrompt,
+            config: {
+              systemInstruction: systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  patternTitle: { type: Type.STRING },
+                  patternContent: { type: Type.STRING },
+                  strengthTitle: { type: Type.STRING },
+                  strengthContent: { type: Type.STRING },
+                  actionTitle: { type: Type.STRING },
+                  actionPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  metricsContext: { type: Type.STRING }
+                },
+                required: ["patternTitle", "patternContent", "strengthTitle", "strengthContent", "actionTitle", "actionPoints", "metricsContext"]
+              }
             }
-          }
-        });
+          });
+        } catch (firstErr: any) {
+          console.warn("Primary custom model failed, falling back to gemini-1.5-flash or gemini-2.5-flash:", firstErr?.message || firstErr);
+          const backupModel = chosenModel === "gemini-1.5-flash" ? "gemini-2.5-flash" : "gemini-1.5-flash";
+          response = await client.models.generateContent({
+            model: backupModel,
+            contents: reportPrompt,
+            config: {
+              systemInstruction: systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  patternTitle: { type: Type.STRING },
+                  patternContent: { type: Type.STRING },
+                  strengthTitle: { type: Type.STRING },
+                  strengthContent: { type: Type.STRING },
+                  actionTitle: { type: Type.STRING },
+                  actionPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  metricsContext: { type: Type.STRING }
+                },
+                required: ["patternTitle", "patternContent", "strengthTitle", "strengthContent", "actionTitle", "actionPoints", "metricsContext"]
+              }
+            }
+          });
+        }
 
         const text = response.text;
         if (!text) throw new Error("Empty response from custom Gemini SDK call");
@@ -225,7 +252,7 @@ app.post("/api/ai-analyze", async (req, res) => {
     const payload = JSON.parse(responseText.trim());
     return res.json({ success: true, isFallback: false, provider: "gemini", analysis: payload });
   } catch (err: any) {
-    console.error("Diagnosis error:", err);
+    console.log("Default Gemini call failed or not configured. Loading heuristic offline coach.", err.message || err);
     // Graceful fallback to rich local rule-based heuristic coach
     const stats = req.body;
     const fallbackReport = generateLocalFeedback(

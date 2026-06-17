@@ -15,6 +15,7 @@ interface AICoachPanelProps {
   isFallback: boolean;
   analysisMode?: 'local' | 'ai';
   onSwitchMode?: (mode: 'local' | 'ai') => void;
+  activeModelId?: string;
 }
 
 const LOADING_STATUSES = [
@@ -32,6 +33,7 @@ export default function AICoachPanel({
   isFallback,
   analysisMode = 'local',
   onSwitchMode,
+  activeModelId = 'gemini-3.5-flash',
 }: AICoachPanelProps) {
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
@@ -80,13 +82,13 @@ export default function AICoachPanel({
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-light)] text-[var(--accent-primary)] hover:brightness-95 disabled:opacity-50 transition cursor-pointer select-none font-semibold font-display"
         >
           <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>刷新诊断</span>
+          <span>{analysisMode === 'ai' ? '给点建议' : '刷新诊断'}</span>
         </button>
       </div>
 
       {/* 模式选择与工作原理说明 */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 mb-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[var(--border-color)]/60 text-xs">
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <span className="font-extrabold text-[var(--text-main)] shrink-0">分析方案:</span>
           <div className="flex bg-slate-200/50 dark:bg-slate-800/60 p-0.5 rounded-lg border border-[var(--border-color)]/30">
             <button
@@ -110,6 +112,11 @@ export default function AICoachPanel({
               云端 AI 深度分析
             </button>
           </div>
+          {analysisMode === 'ai' && (
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/80 dark:border-indigo-900/50 text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-bold">
+              ID: {activeModelId}
+            </span>
+          )}
         </div>
         
         <button
@@ -304,15 +311,44 @@ export default function AICoachPanel({
           </motion.div>
         ) : (
           /* Empty Initial State - calls to action */
-          <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
-            <Activity className="w-12 h-12 text-[var(--accent-primary)]/20 stroke-1" />
-            <div className="max-w-xs space-y-1">
-              <h4 className="text-xs font-bold text-[var(--text-main)] font-display">等待启动诊断书...</h4>
-              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                点击上方<strong className="text-[var(--accent-primary)] font-bold">重新诊断</strong>或者录入新学时，激活基于真实脑科学的时间对齐模型。
-              </p>
+          analysisMode === 'ai' ? (
+            <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-4 min-h-[300px]">
+              <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-900/45 text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="w-8 h-8 animate-pulse" />
+              </div>
+              <div className="max-w-md space-y-2">
+                <h4 className="text-sm font-bold text-[var(--text-main)] font-display tracking-wide">
+                  开启云端 AI 深度时间诊断
+                </h4>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)]/60 text-[10px] text-[var(--text-muted)] font-mono font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
+                  <span>当前大模型 ID : </span>
+                  <span className="text-[var(--accent-primary)]">{activeModelId}</span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto font-medium">
+                  模型处于就绪状态。由于获取 AI 交互需要云端服务响应，系统采用手动触发设计。请点击下方“给点建议”按钮体验深度的时间能量调频及自律建议。
+                </p>
+              </div>
+              <button
+                onClick={onTriggerAnalyze}
+                disabled={loading}
+                className="mt-2 flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white hover:brightness-105 active:scale-95 disabled:opacity-50 transition duration-200 cursor-pointer select-none font-bold text-xs font-display shadow-md shadow-[var(--accent-glow)]/20 text-white"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>给点建议</span>
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
+              <Activity className="w-12 h-12 text-[var(--accent-primary)]/20 stroke-1" />
+              <div className="max-w-xs space-y-1">
+                <h4 className="text-xs font-bold text-[var(--text-main)] font-display">等待启动诊断书...</h4>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  点击上方<strong className="text-[var(--accent-primary)] font-bold">刷新诊断</strong>或者录入新学时，激活系统内置自研诊断算法。
+                </p>
+              </div>
+            </div>
+          )
         )}
       </AnimatePresence>
     </div>

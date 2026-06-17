@@ -40,6 +40,7 @@ import GoalModal from './components/GoalModal';
 import AICoachPanel from './components/AICoachPanel';
 import SettingsMenu from './components/SettingsMenu';
 import LLMConfigModal from './components/LLMConfigModal';
+import { generateDynamicClientFeedback } from './utils/feedbackTemplates';
 
 export default function App() {
   // Global React states with lazy state initializers to guarantee persistent state from localStorage immediately on first render
@@ -124,15 +125,35 @@ export default function App() {
         }
       }
     }
-    return 'ai';
+    return 'local';
   });
+
+  const [activeModelId, setActiveModelId] = useState<string>('gemini-3.5-flash');
+
+  const updateActiveModelId = () => {
+    try {
+      const stored = localStorage.getItem('lean_study_api_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const prov = parsed.activeProvider || 'gemini';
+        if (parsed[prov] && parsed[prov].model) {
+          setActiveModelId(parsed[prov].model);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error updating active model ID:', e);
+    }
+    setActiveModelId('gemini-3.5-flash');
+  };
 
   const [aiAnalysis, setAiAnalysis] = useState<AICoachAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [isFallback, setIsFallback] = useState(false);
 
-  // 1. Initial document layout & theme hydration on mount
+  // 1. Initial document layout, theme hydration & model activation on mount
   useEffect(() => {
+    updateActiveModelId();
     const local = localStorage.getItem('lean_study_dashboard_v3');
     if (local) {
       try {
@@ -153,7 +174,7 @@ export default function App() {
         theme: 'light-minimal',
         goals: DEFAULT_GOALS,
         view: 'week',
-        analysisMode: 'ai'
+        analysisMode: 'local'
       }));
       document.documentElement.setAttribute('data-theme', 'light-minimal');
     }
@@ -187,7 +208,11 @@ export default function App() {
   const handleSwitchAnalysisMode = (newMode: 'local' | 'ai') => {
     setAnalysisMode(newMode);
     saveState(records, theme, goals, view, newMode);
-    performAIDiagnosis(records, goals, view, navDate, newMode);
+    if (newMode === 'local') {
+      performAIDiagnosis(records, goals, view, navDate, 'local');
+    } else {
+      setAiAnalysis(null);
+    }
   };
 
   // Helper Client feedback generator for standard offline use
@@ -311,7 +336,7 @@ export default function App() {
     if (activeMode === 'local') {
       setAiLoading(true);
       setTimeout(() => {
-        const localReport = generateClientFeedback(activeView, stats.totalHours, stats.avgHours, stats.activeDays, stats.maxDayHours, stats.maxDayName, stats.rangeLabel);
+        const localReport = generateDynamicClientFeedback(activeView, stats.totalHours, stats.avgHours, stats.activeDays, stats.maxDayHours, stats.maxDayName, stats.rangeLabel);
         setAiAnalysis(localReport);
         setIsFallback(true);
         setAiLoading(false);
@@ -324,12 +349,31 @@ export default function App() {
       // Fetch custom LLM credential settings
       let customConfigToSend = null;
       try {
-        const stored = localStorage.getItem('lean_study_api_config');
+        let stored = localStorage.getItem('lean_study_api_config');
+        let parsed = stored ? JSON.parse(stored) : null;
+        let needsWrite = false;
+
+        if (!parsed || !parsed.gemini) {
+          parsed = {
+            activeProvider: 'gemini',
+            gemini: { apiKey: '', model: 'gemini-3.5-flash' },
+            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-V3' },
+            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4-flash' },
+            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-chat' }
+          };
+          needsWrite = true;
+        }
+
+        if (needsWrite) {
+          localStorage.setItem('lean_study_api_config', JSON.stringify(parsed));
+          stored = JSON.stringify(parsed);
+        }
+
         if (stored) {
-          const parsed = JSON.parse(stored);
-          const activeProv = parsed.activeProvider;
-          if (activeProv && parsed[activeProv]) {
-            const details = parsed[activeProv];
+          const parsedConfig = JSON.parse(stored);
+          const activeProv = parsedConfig.activeProvider;
+          if (activeProv && parsedConfig[activeProv]) {
+            const details = parsedConfig[activeProv];
             if (details.apiKey) {
               customConfigToSend = {
                 provider: activeProv,
@@ -371,7 +415,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to trigger server-side Gemini intelligence:', err);
       // Construct a premium edge state fallback in-case
-      const fallbackReport = generateClientFeedback(activeView, stats.totalHours, stats.avgHours, stats.activeDays, stats.maxDayHours, stats.maxDayName, stats.rangeLabel);
+      const fallbackReport = generateDynamicClientFeedback(activeView, stats.totalHours, stats.avgHours, stats.activeDays, stats.maxDayHours, stats.maxDayName, stats.rangeLabel);
       setAiAnalysis(fallbackReport);
       setIsFallback(true);
     } finally {
@@ -480,10 +524,14 @@ export default function App() {
   const monthStats = getActiveMetrics(records, goals, 'month', navDate);
   const activeStats = view === 'week' ? weekStats : monthStats;
 
-  // Trigger Gemini analysis automatically on base dataset updates
+  // Trigger built-in analysis on base dataset updates.
+  // DO NOT trigger cloud AI automatically (respect manual click intent).
   useEffect(() => {
-    if (Object.keys(records).length > 0) {
-      performAIDiagnosis(records, goals, view, navDate);
+    if (analysisMode === 'local') {
+      performAIDiagnosis(records, goals, view, navDate, 'local');
+    } else {
+      // Reset the cloud feedback to null so user can trigger it manually for the current view/date
+      setAiAnalysis(null);
     }
   }, [records, view, navDate, analysisMode]);
 
@@ -906,10 +954,11 @@ export default function App() {
             <AICoachPanel 
               analysis={aiAnalysis} 
               loading={aiLoading} 
-              onTriggerAnalyze={() => performAIDiagnosis(records, goals, view, navDate)} 
+              onTriggerAnalyze={() => performAIDiagnosis(records, goals, view, navDate, 'ai')} 
               isFallback={isFallback}
               analysisMode={analysisMode}
               onSwitchMode={handleSwitchAnalysisMode}
+              activeModelId={activeModelId}
             />
 
           </div>
@@ -956,7 +1005,10 @@ export default function App() {
       <LLMConfigModal
         isOpen={isLLMConfigOpen}
         onClose={() => setIsLLMConfigOpen(false)}
-        onSave={() => performAIDiagnosis(records, goals, view, navDate)}
+        onSave={() => {
+          updateActiveModelId();
+          // Modifying save hook so that it only updates modelId without auto-firing LLM calls.
+        }}
       />
 
     </div>
