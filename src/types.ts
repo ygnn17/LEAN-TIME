@@ -10,6 +10,8 @@ export type ViewType = 'week' | 'month';
 export interface DayNightRecord {
   day: number;
   night: number;
+  leaveType?: 'normal' | 'special';
+  leaveReason?: string;
 }
 
 export interface StudyRecord {

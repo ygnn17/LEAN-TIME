@@ -29,16 +29,35 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
   const totalDays = new Date(year, month + 1, 0).getDate();
 
   // Elements mapping
-  const daysArray: { dateStr: string; dayNum: number; hours: number }[] = [];
+  const daysArray: { 
+    dateStr: string; 
+    dayNum: number; 
+    hours: number; 
+    leaveType?: 'normal' | 'special'; 
+    leaveReason?: string; 
+  }[] = [];
 
   for (let d = 1; d <= totalDays; d++) {
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const rVal = records[formattedDate];
-    const hours = typeof rVal === 'number' ? rVal : (rVal ? (rVal.day || 0) + (rVal.night || 0) : 0);
+    let hours = 0;
+    let leaveType: 'normal' | 'special' | undefined = undefined;
+    let leaveReason: string | undefined = undefined;
+
+    if (typeof rVal === 'number') {
+      hours = rVal;
+    } else if (rVal) {
+      hours = (rVal.day || 0) + (rVal.night || 0);
+      leaveType = rVal.leaveType;
+      leaveReason = rVal.leaveReason;
+    }
+
     daysArray.push({
       dateStr: formattedDate,
       dayNum: d,
       hours: hours,
+      leaveType,
+      leaveReason,
     });
   }
 
@@ -52,7 +71,7 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
 
   return (
     <div className="custom-card rounded-2xl p-6 relative overflow-hidden">
-      <div className="flex justify-between items-center mb-5 border-b border-[var(--border-color)] pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-5 border-b border-[var(--border-color)] pb-4">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent-primary)]">
             <Calendar className="w-4 h-4" />
@@ -64,13 +83,23 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
         </div>
 
         {/* Legend block */}
-        <div className="flex items-center gap-3 text-[10px] text-muted font-mono select-none">
-          <span>无记录</span>
-          <span className="w-2.5 h-2.5 rounded bg-slate-100 dark:bg-slate-800 border border-[var(--border-color)]" />
-          <span className="w-2.5 h-2.5 rounded bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20" />
-          <span className="w-2.5 h-2.5 rounded bg-[var(--accent-primary)]/25 border border-[var(--accent-primary)]/50" />
-          <span className="w-2.5 h-2.5 rounded bg-[var(--accent-primary)]/40 border border-[var(--accent-primary)]" />
-          <span>深度专注</span>
+        <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted font-mono select-none">
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-slate-100 dark:bg-slate-800 border border-[var(--border-color)]" />
+            <span>未登记</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40" />
+            <span>有学时</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-emerald-500/15 border border-emerald-500/30" />
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">正常休息</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/30" />
+            <span className="text-rose-500 font-semibold">特殊事由</span>
+          </div>
         </div>
       </div>
 
@@ -93,13 +122,24 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
 
         {/* Core Date Grids */}
         {daysArray.map((day) => {
-          const intensityStyle = getIntensityClass(day.hours);
           const isToday = new Date().toISOString().split('T')[0] === day.dateStr;
+          
+          let intensityStyle = '';
+          if (day.leaveType) {
+            if (day.leaveType === 'normal') {
+              intensityStyle = 'border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-600 dark:text-emerald-400 font-medium hover:border-emerald-500';
+            } else {
+              intensityStyle = 'border-rose-500/40 bg-rose-500/[0.08] text-rose-500 font-bold hover:border-rose-500';
+            }
+          } else {
+            intensityStyle = getIntensityClass(day.hours);
+          }
 
           return (
             <div
               key={day.dateStr}
               onClick={() => onDayClick(day.dateStr)}
+              title={day.leaveReason ? `请假事由 (${day.leaveType === 'normal' ? '正常休息' : '特殊事由'}): ${day.leaveReason}` : undefined}
               className={`
                 aspect-square p-2 rounded-xl flex flex-col justify-between border cursor-pointer select-none
                 transition-all duration-300 transform active:scale-95 group relative
@@ -109,7 +149,7 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
             >
               {/* Day Number and Today Indicator */}
               <div className="flex justify-between items-start">
-                <span className={`text-[11px] font-bold ${day.hours > 0 ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
+                <span className={`text-[11px] font-bold ${day.hours > 0 || day.leaveType ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
                   {day.dayNum}
                 </span>
                 {isToday && (
@@ -117,8 +157,19 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
                 )}
               </div>
 
-              {/* Study scale indicator */}
-              {day.hours > 0 ? (
+              {/* Study scale indicator / Leave labels */}
+              {day.leaveType ? (
+                <div className="flex flex-col items-stretch text-left text-[9px] font-bold select-none leading-tight mt-1">
+                  <span className={`truncate text-[9px] ${day.leaveType === 'normal' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                    {day.leaveType === 'normal' ? '息 自律' : '假 专事'}
+                  </span>
+                  {day.hours > 0 && (
+                    <span className="font-mono text-[8px] font-extrabold opacity-80 text-right">
+                      {day.hours.toFixed(1)}h
+                    </span>
+                  )}
+                </div>
+              ) : day.hours > 0 ? (
                 <div className="flex items-center justify-between text-[10px] font-mono select-none mt-1">
                   <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <Clock className="w-2.5 h-2.5 inline mr-0.5" />

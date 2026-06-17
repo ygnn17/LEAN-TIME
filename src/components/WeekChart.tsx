@@ -233,13 +233,46 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                   />
                 )}
 
+                {/* Leave Days Placeholder Pill with custom-color */}
+                {rec.leaveType && rec.day === 0 && rec.night === 0 && (
+                  <g className="pointer-events-none">
+                    <rect
+                      x={xOffset}
+                      y={paddingTop + 10}
+                      width={widthVal}
+                      height={graphHeight - 20}
+                      rx={3}
+                      fill={rec.leaveType === 'normal' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)'}
+                      stroke={rec.leaveType === 'normal' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                    />
+                    <text
+                      x={xOffset + widthVal / 2}
+                      y={zeroY + 3.5}
+                      textAnchor="middle"
+                      className={`text-[9px] font-extrabold font-sans select-none tracking-tight ${
+                        rec.leaveType === 'normal' ? 'fill-emerald-600 dark:fill-emerald-400' : 'fill-rose-500'
+                      }`}
+                    >
+                      {rec.leaveType === 'normal' ? '休息' : '请假'}
+                    </text>
+                  </g>
+                )}
+
                 {/* Center intersection indicator dot if active */}
                 {(rec.day > 0 || rec.night > 0) && (
                   <circle
                     cx={xOffset + widthVal / 2}
                     cy={zeroY}
-                    r={2.5}
-                    className="fill-white stroke-[var(--accent-primary)] stroke-1 pointer-events-none"
+                    r={2.8}
+                    className={`pointer-events-none stroke-1 ${
+                      rec.leaveType 
+                        ? rec.leaveType === 'normal'
+                          ? "fill-emerald-500 stroke-emerald-600"
+                          : "fill-rose-500 stroke-rose-600"
+                        : "fill-white stroke-[var(--accent-primary)]"
+                    }`}
                   />
                 )}
 
@@ -320,6 +353,24 @@ export default function WeekChart({ dayNightRecords, dates, onBarClick }: WeekCh
                 {total >= 4 && (
                   <div className="mt-0.5 self-start inline-flex items-center px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 text-[9px] font-bold gap-0.5 leading-none">
                     <Flame className="w-2.5 h-2.5 fill-current" /> 高效自律
+                  </div>
+                )}
+
+                {rec.leaveType && (
+                  <div className={`mt-2 p-1.5 px-2 rounded-lg text-[10px] border leading-relaxed ${
+                    rec.leaveType === 'normal'
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 mb-0.5 whitespace-nowrap">
+                      <span className={`w-1.5 h-1.5 rounded-full ${rec.leaveType === 'normal' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <span>{rec.leaveType === 'normal' ? '正常休息' : '特殊事由请假'}</span>
+                    </div>
+                    {rec.leaveReason && (
+                      <p className="text-[9px] text-zinc-500 dark:text-zinc-400 italic break-all max-w-[150px]">
+                        “{rec.leaveReason}”
+                      </p>
+                    )}
                   </div>
                 )}
               </motion.div>

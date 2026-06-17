@@ -5,13 +5,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Sun, Moon, Feather, X, RotateCcw } from 'lucide-react';
+import { Calendar, Sun, Moon, Feather, X, RotateCcw, Coffee, MessageSquare, AlertCircle } from 'lucide-react';
 import { DayNightRecord } from '../types';
 
 interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (dateStr: string, dayHours: number, nightHours: number) => void;
+  onSubmit: (
+    dateStr: string,
+    dayHours: number,
+    nightHours: number,
+    leaveType?: 'normal' | 'special',
+    leaveReason?: string
+  ) => void;
   defaultDate: string;
   initialValue: number | DayNightRecord | null | undefined;
 }
@@ -27,6 +33,11 @@ export default function RegisterModal({
   const [dayHours, setDayHours] = useState<string>('');
   const [nightHours, setNightHours] = useState<string>('');
 
+  // Leave states
+  const [isLeave, setIsLeave] = useState(false);
+  const [leaveType, setLeaveType] = useState<'normal' | 'special'>('normal');
+  const [leaveReason, setLeaveReason] = useState<string>('');
+
   useEffect(() => {
     if (isOpen) {
       setDateStr(defaultDate);
@@ -34,13 +45,22 @@ export default function RegisterModal({
         if (typeof initialValue === 'number') {
           setDayHours(initialValue > 0 ? initialValue.toString() : '');
           setNightHours('');
+          setIsLeave(false);
+          setLeaveType('normal');
+          setLeaveReason('');
         } else {
           setDayHours(initialValue.day > 0 ? initialValue.day.toString() : '');
           setNightHours(initialValue.night > 0 ? initialValue.night.toString() : '');
+          setIsLeave(!!initialValue.leaveType);
+          setLeaveType(initialValue.leaveType || 'normal');
+          setLeaveReason(initialValue.leaveReason || '');
         }
       } else {
         setDayHours('');
         setNightHours('');
+        setIsLeave(false);
+        setLeaveType('normal');
+        setLeaveReason('');
       }
     }
   }, [isOpen, defaultDate, initialValue]);
@@ -60,6 +80,9 @@ export default function RegisterModal({
   const handleReset = () => {
     setDayHours('');
     setNightHours('');
+    setIsLeave(false);
+    setLeaveType('normal');
+    setLeaveReason('');
   };
 
   const handleSubmitForm = (e: React.FormEvent) => {
@@ -77,7 +100,17 @@ export default function RegisterModal({
       return;
     }
 
-    onSubmit(dateStr, dayVal, nightVal);
+    // Leave reason validation: if choose to Leave but write 0 hours, reason is mandatory
+    if (isLeave) {
+      const isHoursEmpty = (dayVal === 0 && nightVal === 0);
+      if (isHoursEmpty && !leaveReason.trim()) {
+        alert('请填写请假事由！当您未登记当天学习时长并选择请假时，事由是必填项，否则无法保存。');
+        return;
+      }
+      onSubmit(dateStr, dayVal, nightVal, leaveType, leaveReason.trim());
+    } else {
+      onSubmit(dateStr, dayVal, nightVal, undefined, undefined);
+    }
   };
 
   return (
@@ -117,6 +150,7 @@ export default function RegisterModal({
               </div>
               <button
                 onClick={onClose}
+                type="button"
                 className="p-1.5 rounded-lg text-muted hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer select-none"
               >
                 <X className="w-4 h-4" />
@@ -150,7 +184,7 @@ export default function RegisterModal({
                 {/* 1. Daytime Study Panel */}
                 <div className="p-3.5 rounded-xl border border-[var(--border-color)]/60 bg-slate-50/50 dark:bg-slate-950/40">
                   <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold mb-2">
-                    <Sun className="w-4 h-4 animate-spin-slow" />
+                    <Sun className="w-4 h-4" />
                     <span className="text-[11px]">白天专注时长</span>
                   </div>
                   <div className="relative mb-2">
@@ -213,6 +247,92 @@ export default function RegisterModal({
                   </div>
                 </div>
 
+              </div>
+
+              {/* ===================== 请假 / 休息登记模块 ===================== */}
+              <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coffee className={`w-4 h-4 transition ${isLeave ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`} />
+                    <span className="text-xs font-bold text-[var(--text-main)]">登记休息 / 请假状态</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isLeave}
+                      onChange={(e) => setIsLeave(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-primary)]"></div>
+                  </label>
+                </div>
+
+                {isLeave && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-3 pt-2 border-t border-[var(--border-color)]/50"
+                  >
+                    {/* Leave type selection */}
+                    <div>
+                      <span className="block text-[10px] text-[var(--text-muted)] font-extrabold mb-1.5 uppercase tracking-wide">请假类别</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setLeaveType('normal')}
+                          className={`py-1.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                            leaveType === 'normal'
+                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                              : 'border-[var(--border-color)] bg-white dark:bg-slate-900 text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${leaveType === 'normal' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          <span>正常休息</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLeaveType('special')}
+                          className={`py-1.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                            leaveType === 'special'
+                              ? 'border-rose-500 bg-rose-500/10 text-rose-500 shadow-sm'
+                              : 'border-[var(--border-color)] bg-white dark:bg-slate-900 text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${leaveType === 'special' ? 'bg-rose-500' : 'bg-slate-400'}`} />
+                          <span>特殊事由</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Leave Reason prompt input */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="block text-[10px] text-[var(--text-muted)] font-extrabold uppercase tracking-wide">
+                          请假事由 / 休息说明
+                        </span>
+                        {(!dayHours && !nightHours) && (
+                          <span className="text-[9px] text-rose-500 font-extrabold flex items-center gap-0.5">
+                            <AlertCircle className="w-2.5 h-2.5" /> 必填项
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-muted">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </span>
+                        <input
+                          type="text"
+                          value={leaveReason}
+                          onChange={(e) => setLeaveReason(e.target.value)}
+                          placeholder="例如：周日例行休息，或者由于身体不适请假"
+                          className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-main)] text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] font-medium transition"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
 
               {/* Combined Total Display and Clear Action */}

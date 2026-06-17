@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Target, X } from 'lucide-react';
 import { UserGoals } from '../types';
 
-interface GoalModalProps {
+export interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentGoals: UserGoals;
@@ -23,33 +23,34 @@ export default function GoalModal({
   activeView,
   onSave,
 }: GoalModalProps) {
-  const [targetVal, setTargetVal] = useState<string>('');
+  const [weeklyVal, setWeeklyVal] = useState<string>('');
+  const [monthlyVal, setMonthlyVal] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
-      setTargetVal(
-        activeView === 'week' 
-          ? currentGoals.weeklyGoal.toString() 
-          : currentGoals.monthlyGoal.toString()
-      );
+      setWeeklyVal(currentGoals.weeklyGoal.toString());
+      setMonthlyVal(currentGoals.monthlyGoal.toString());
     }
-  }, [isOpen, currentGoals, activeView]);
+  }, [isOpen, currentGoals]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(targetVal);
-    if (isNaN(val) || val <= 0) {
-      alert('目标时长必须是大于 0 的数值');
+    const wNum = parseFloat(weeklyVal);
+    const mNum = parseFloat(monthlyVal);
+
+    if (isNaN(wNum) || wNum <= 0) {
+      alert('周目标时长必须是大于 0 的数值');
+      return;
+    }
+    if (isNaN(mNum) || mNum <= 0) {
+      alert('月目标时长必须是大于 0 的数值');
       return;
     }
 
-    const updated = { ...currentGoals };
-    if (activeView === 'week') {
-      updated.weeklyGoal = val;
-    } else {
-      updated.monthlyGoal = val;
-    }
-    onSave(updated);
+    onSave({
+      weeklyGoal: wNum,
+      monthlyGoal: mNum,
+    });
   };
 
   return (
@@ -83,36 +84,75 @@ export default function GoalModal({
                   <Target className="w-4 h-4" />
                 </div>
                 <h3 className="font-display font-bold text-[var(--text-main)] text-sm">
-                  设定 {activeView === 'week' ? '本周' : '本月'} 学时目标
+                  设定学时目标计划
                 </h3>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-muted hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 rounded-lg text-muted hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-bold mb-2 tracking-wide uppercase">
-                  新专注目标学时
-                </label>
+            <form onSubmit={handleSubmit} className="space-y-4.5 relative z-10">
+              {/* Weekly target input */}
+              <div className={`p-3 rounded-xl border transition ${activeView === 'week' ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/[0.02]' : 'border-[var(--border-color)]/60 bg-slate-50/50 dark:bg-slate-950/40'}`}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[11px] text-[var(--text-muted)] font-extrabold uppercase tracking-wide">
+                    周计划专注时间
+                  </label>
+                  {activeView === 'week' && (
+                    <span className="text-[9px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] px-1.5 py-0.5 rounded-md font-bold">
+                      当前视图
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type="number"
                     min="1"
-                    max="500"
-                    value={targetVal}
-                    onChange={(e) => setTargetVal(e.target.value)}
-                    placeholder={activeView === 'week' ? '默认: 15h' : '默认: 60h'}
+                    max="168"
+                    step="1"
+                    value={weeklyVal}
+                    onChange={(e) => setWeeklyVal(e.target.value)}
+                    placeholder="默认: 15h"
                     required
-                    className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-main)] text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] pr-12 transition"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-main)] text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] pr-12 transition font-bold font-mono"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--text-muted)] font-bold">
-                    小时
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[var(--text-muted)] font-bold">
+                    小时 / 周
+                  </span>
+                </div>
+              </div>
+
+              {/* Monthly target input */}
+              <div className={`p-3 rounded-xl border transition ${activeView === 'month' ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/[0.02]' : 'border-[var(--border-color)]/60 bg-slate-50/50 dark:bg-slate-950/40'}`}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[11px] text-[var(--text-muted)] font-extrabold uppercase tracking-wide">
+                    月计划专注时间
+                  </label>
+                  {activeView === 'month' && (
+                    <span className="text-[9px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] px-1.5 py-0.5 rounded-md font-bold">
+                      当前视图
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="744"
+                    step="1"
+                    value={monthlyVal}
+                    onChange={(e) => setMonthlyVal(e.target.value)}
+                    placeholder="默认: 60h"
+                    required
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-[var(--border-color)] text-[var(--text-main)] text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] pr-12 transition font-bold font-mono"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[var(--text-muted)] font-bold">
+                    小时 / 月
                   </span>
                 </div>
               </div>
@@ -122,13 +162,13 @@ export default function GoalModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 rounded-xl bg-transparent border border-[var(--border-color)] text-[var(--text-main)] font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="flex-1 py-2.5 rounded-xl bg-transparent border border-[var(--border-color)] text-[var(--text-main)] font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer select-none"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-bold text-xs tracking-wider shadow-md shadow-[var(--accent-glow)] transition-all animate-pulse"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-bold text-xs tracking-wider shadow-md shadow-[var(--accent-glow)] transition-all cursor-pointer hover:brightness-105 active:scale-95"
                 >
                   保存并应用
                 </button>

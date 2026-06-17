@@ -476,7 +476,9 @@ export default function App() {
     };
   };
 
-  const activeStats = getActiveMetrics(records, goals, view, navDate);
+  const weekStats = getActiveMetrics(records, goals, 'week', navDate);
+  const monthStats = getActiveMetrics(records, goals, 'month', navDate);
+  const activeStats = view === 'week' ? weekStats : monthStats;
 
   // Trigger Gemini analysis automatically on base dataset updates
   useEffect(() => {
@@ -497,12 +499,22 @@ export default function App() {
   };
 
   // Log study time confirm (Day & Night split)
-  const handleRegisterConfirm = (selectedDate: string, dayHours: number, nightHours: number) => {
+  const handleRegisterConfirm = (
+    selectedDate: string,
+    dayHours: number,
+    nightHours: number,
+    leaveType?: 'normal' | 'special',
+    leaveReason?: string
+  ) => {
     const updated = { ...records };
-    if (dayHours <= 0 && nightHours <= 0) {
+    if (dayHours <= 0 && nightHours <= 0 && !leaveType) {
       delete updated[selectedDate];
     } else {
-      updated[selectedDate] = { day: dayHours, night: nightHours };
+      updated[selectedDate] = {
+        day: dayHours,
+        night: nightHours,
+        ...(leaveType ? { leaveType, leaveReason } : {})
+      };
     }
     setRecords(updated);
     saveState(updated, theme, goals, view, analysisMode);
@@ -749,41 +761,92 @@ export default function App() {
 
             </div>
 
-            {/* Target ratios progress visual readout */}
-            <div className="custom-card rounded-2xl p-5">
-              <div className="flex justify-between items-center mb-2.5">
-                <span className="text-xs font-bold text-muted tracking-wide uppercase">本期目标进度</span>
-                <span className="text-xs text-[var(--accent-primary)] font-extrabold tracking-wide font-display">
-                  {activeStats.progressRatio}%
-                </span>
-              </div>
-              
-              {/* Progress bar tracks */}
-              <div className="w-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)]/20 rounded-full h-2">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(activeStats.progressRatio, 100)}%` }}
-                  transition={{ type: 'spring', stiffness: 60, damping: 15 }}
-                  className="bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] h-[7px] rounded-full"
-                />
-              </div>
-
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-[10px] text-muted font-medium">
-                  {activeStats.totalHours >= activeStats.goalLimit ? (
-                    <span className="text-[var(--accent-primary)] font-bold flex items-center gap-1">
-                      <FileCheck2 className="w-3.5 h-3.5 inline" /> 卓越！已超额达成目标！
-                    </span>
-                  ) : (
-                    <span>距离目标还差 <strong className="font-bold text-[var(--text-main)] font-mono">{(activeStats.goalLimit - activeStats.totalHours).toFixed(1)}</strong> 小时</span>
-                  )}
-                </span>
+            {/* Target ratios progress visual readout (Upgraded to Dual Goal Dashboard) */}
+            <div className="custom-card rounded-2xl p-5 space-y-4">
+              <div className="flex justify-between items-center border-b border-[var(--border-color)]/60 pb-2">
+                <span className="text-xs font-bold text-muted tracking-wide uppercase">目标计划完成度</span>
                 <button
                   onClick={() => setIsGoalOpen(true)}
-                  className="text-xs text-[var(--accent-primary)] hover:brightness-95 underline font-bold transition select-none tracking-wide"
+                  className="text-xs text-[var(--accent-primary)] hover:brightness-95 underline font-bold transition select-none tracking-wide cursor-pointer"
                 >
-                  设定
+                  设定目标
                 </button>
+              </div>
+
+              {/* 1. 周计划进度 */}
+              <div className={`p-3 rounded-xl border transition ${view === 'week' ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/[0.02] shadow-[inset_0_0_8px_rgba(16,185,129,0.02)]' : 'border-[var(--border-color)]/50 bg-slate-50/20 dark:bg-slate-900/10'}`}>
+                <div className="flex justify-between items-center mb-1.5 text-xs">
+                  <span className="font-bold flex items-center gap-1 text-[var(--text-main)]">
+                    <span>周计划进度</span>
+                    {view === 'week' && (
+                      <span className="text-[9px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] px-1.5 py-0.5 rounded-md font-bold scale-90">当前</span>
+                    )}
+                  </span>
+                  <span className="font-mono font-extrabold text-[var(--accent-primary)]">
+                    {weekStats.progressRatio}%
+                  </span>
+                </div>
+                
+                {/* Progress track */}
+                <div className="w-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)]/20 rounded-full h-1.5">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(weekStats.progressRatio, 100)}%` }}
+                    transition={{ type: 'spring', stiffness: 60, damping: 15 }}
+                    className="bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] h-full rounded-full"
+                  />
+                </div>
+
+                <div className="flex justify-between items-center mt-2 text-[10px] text-muted">
+                  <span>已学 {weekStats.totalHours.toFixed(1)} / {goals.weeklyGoal}h</span>
+                  <span>
+                    {weekStats.totalHours >= goals.weeklyGoal ? (
+                      <span className="text-[var(--accent-primary)] font-bold flex items-center gap-0.5">
+                        已超额达成周目标！
+                      </span>
+                    ) : (
+                      <span>还差 <b>{(goals.weeklyGoal - weekStats.totalHours).toFixed(1)}</b>h</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. 月计划进度 */}
+              <div className={`p-3 rounded-xl border transition ${view === 'month' ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/[0.02] shadow-[inset_0_0_8px_rgba(16,185,129,0.02)]' : 'border-[var(--border-color)]/50 bg-slate-50/20 dark:bg-slate-900/10'}`}>
+                <div className="flex justify-between items-center mb-1.5 text-xs">
+                  <span className="font-bold flex items-center gap-1 text-[var(--text-main)]">
+                    <span>月计划进度</span>
+                    {view === 'month' && (
+                      <span className="text-[9px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] px-1.5 py-0.5 rounded-md font-bold scale-90">当前</span>
+                    )}
+                  </span>
+                  <span className="font-mono font-extrabold text-[var(--accent-primary)]">
+                    {monthStats.progressRatio}%
+                  </span>
+                </div>
+                
+                {/* Progress track */}
+                <div className="w-full bg-slate-100 dark:bg-slate-900 border border-[var(--border-color)]/20 rounded-full h-1.5">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(monthStats.progressRatio, 100)}%` }}
+                    transition={{ type: 'spring', stiffness: 60, damping: 15 }}
+                    className="bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] h-full rounded-full"
+                  />
+                </div>
+
+                <div className="flex justify-between items-center mt-2 text-[10px] text-muted">
+                  <span>已学 {monthStats.totalHours.toFixed(1)} / {goals.monthlyGoal}h</span>
+                  <span>
+                    {monthStats.totalHours >= goals.monthlyGoal ? (
+                      <span className="text-[var(--accent-primary)] font-bold flex items-center gap-0.5">
+                        已超额达成月目标！
+                      </span>
+                    ) : (
+                      <span>还差 <b>{(goals.monthlyGoal - monthStats.totalHours).toFixed(1)}</b>h</span>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -808,7 +871,12 @@ export default function App() {
                       if (typeof r === 'number') {
                         return { day: r, night: 0 };
                       } else if (r) {
-                        return { day: r.day || 0, night: r.night || 0 };
+                        return { 
+                          day: r.day || 0, 
+                          night: r.night || 0,
+                          leaveType: r.leaveType,
+                          leaveReason: r.leaveReason
+                        };
                       }
                       return { day: 0, night: 0 };
                     })} 
