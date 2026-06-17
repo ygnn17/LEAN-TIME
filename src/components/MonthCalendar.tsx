@@ -33,7 +33,8 @@ export default function MonthCalendar({ navDate, records, onDayClick }: MonthCal
 
   for (let d = 1; d <= totalDays; d++) {
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const hours = records[formattedDate] || 0;
+    const rVal = records[formattedDate];
+    const hours = typeof rVal === 'number' ? rVal : (rVal ? (rVal.day || 0) + (rVal.night || 0) : 0);
     daysArray.push({
       dateStr: formattedDate,
       dayNum: d,

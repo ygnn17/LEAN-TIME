@@ -7,8 +7,13 @@ export type ThemeType = 'light-minimal' | 'nordic-obsidian' | 'warm-oatmeal';
 
 export type ViewType = 'week' | 'month';
 
+export interface DayNightRecord {
+  day: number;
+  night: number;
+}
+
 export interface StudyRecord {
-  [dateStr: string]: number; // Date string format "YYYY-MM-DD" -> Study hours
+  [dateStr: string]: number | DayNightRecord; // Date string format "YYYY-MM-DD" -> Study hours or Day/Night object
 }
 
 export interface UserGoals {

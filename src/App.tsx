@@ -43,15 +43,15 @@ import LLMConfigModal from './components/LLMConfigModal';
 
 const SEED_RECORDS: StudyRecord = {
   // Set up some realistic premium seeded learning data for the last 15 days so the dashboard looks loaded & elite
-  '2026-06-08': 3.5,
-  '2026-06-09': 4.0,
-  '2026-06-10': 5.5,
-  '2026-06-11': 2.0,
-  '2026-06-12': 6.5,
-  '2026-06-13': 8.0,
-  '2026-06-14': 0.0,
-  '2026-06-15': 4.5,
-  '2026-06-16': 5.0, // Today
+  '2026-06-08': { day: 2.5, night: 1.0 },
+  '2026-06-09': { day: 3.0, night: 1.0 },
+  '2026-06-10': { day: 4.0, night: 1.5 },
+  '2026-06-11': { day: 1.0, night: 1.0 },
+  '2026-06-12': { day: 4.5, night: 2.0 },
+  '2026-06-13': { day: 5.0, night: 3.0 },
+  '2026-06-14': { day: 0.0, night: 0.0 },
+  '2026-06-15': { day: 3.0, night: 1.5 },
+  '2026-06-16': { day: 3.5, night: 1.5 }, // Today
 };
 
 export default function App() {
@@ -364,8 +364,14 @@ export default function App() {
       rangeLabel = `${startMD} - ${endMD}`;
 
       weekDates.forEach((date, index) => {
-        const h = currentRecords[date] || 0;
-        recordsSlice[date] = h;
+        const rawVal = currentRecords[date];
+        let h = 0;
+        if (typeof rawVal === 'number') {
+          h = rawVal;
+        } else if (rawVal) {
+          h = (rawVal.day || 0) + (rawVal.night || 0);
+        }
+        recordsSlice[date] = rawVal || { day: 0, night: 0 };
         totalHours += h;
         if (h > 0) {
           activeDays++;
@@ -383,8 +389,14 @@ export default function App() {
 
       for (let d = 1; d <= totalDays; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const h = currentRecords[dateStr] || 0;
-        recordsSlice[dateStr] = h;
+        const rawVal = currentRecords[dateStr];
+        let h = 0;
+        if (typeof rawVal === 'number') {
+          h = rawVal;
+        } else if (rawVal) {
+          h = (rawVal.day || 0) + (rawVal.night || 0);
+        }
+        recordsSlice[dateStr] = rawVal || { day: 0, night: 0 };
         totalHours += h;
         if (h > 0) {
           activeDays++;
@@ -435,13 +447,13 @@ export default function App() {
     setNavDate(nextDate);
   };
 
-  // Log study time confirm
-  const handleRegisterConfirm = (selectedDate: string, hours: number) => {
+  // Log study time confirm (Day & Night split)
+  const handleRegisterConfirm = (selectedDate: string, dayHours: number, nightHours: number) => {
     const updated = { ...records };
-    if (hours <= 0) {
+    if (dayHours <= 0 && nightHours <= 0) {
       delete updated[selectedDate];
     } else {
-      updated[selectedDate] = hours;
+      updated[selectedDate] = { day: dayHours, night: nightHours };
     }
     setRecords(updated);
     saveState(updated, theme, goals, view, analysisMode);
@@ -742,7 +754,15 @@ export default function App() {
                   transition={{ duration: 0.35, ease: 'easeOut' }}
                 >
                   <WeekChart 
-                    hoursData={getWeekDates(navDate).map((dateStr) => records[dateStr] || 0)} 
+                    dayNightRecords={getWeekDates(navDate).map((dateStr) => {
+                      const r = records[dateStr];
+                      if (typeof r === 'number') {
+                        return { day: r, night: 0 };
+                      } else if (r) {
+                        return { day: r.day || 0, night: r.night || 0 };
+                      }
+                      return { day: 0, night: 0 };
+                    })} 
                     dates={getWeekDates(navDate)} 
                     onBarClick={handleDaySelect} 
                   />
@@ -803,7 +823,7 @@ export default function App() {
         onClose={() => setIsRegisterOpen(false)}
         onSubmit={handleRegisterConfirm}
         defaultDate={selectedDateForRegister || new Date().toISOString().split('T')[0]}
-        initialHours={records[selectedDateForRegister] || null}
+        initialValue={records[selectedDateForRegister] || null}
       />
 
       {/* Goals targets setter overlay */}

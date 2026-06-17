@@ -62,7 +62,7 @@ export default function AICoachPanel({
           </div>
           <div>
             <h3 className="font-display font-semibold text-main text-base flex items-center gap-1.5">
-              <span>专属专注诊断教练</span>
+              <span>学习情况及建议</span>
               {isFallback && analysisMode === 'ai' && (
                 <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider">
                   已温和降级至本地算法
