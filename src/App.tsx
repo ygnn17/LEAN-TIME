@@ -357,9 +357,9 @@ export default function App() {
           parsed = {
             activeProvider: 'gemini',
             gemini: { apiKey: '', model: 'gemini-3.5-flash' },
-            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-V3' },
-            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4-flash' },
-            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-chat' }
+            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-R1' },
+            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4.5-air' },
+            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-v4-flash' }
           };
           needsWrite = true;
         }

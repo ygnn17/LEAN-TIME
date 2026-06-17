@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Key, Eye, EyeOff, Save, Trash2, X, Sparkles, AlertCircle } from 'lucide-react';
+import { Key, Eye, EyeOff, Save, Trash2, X, Sparkles, AlertCircle, Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface LLMConfigModalProps {
   isOpen: boolean;
@@ -24,9 +24,9 @@ export interface StoredAPIConfig {
 const DEFAULT_CONFIGS: StoredAPIConfig = {
   activeProvider: 'gemini',
   gemini: { apiKey: '', model: 'gemini-3.5-flash' },
-  siliconflow: { apiKey: '', model: 'deepseek-ai/DeepSeek-V3' },
-  zhipu: { apiKey: '', model: 'glm-4-flash' },
-  deepseek: { apiKey: '', model: 'deepseek-chat' }
+  siliconflow: { apiKey: '', model: 'deepseek-ai/DeepSeek-R1' },
+  zhipu: { apiKey: '', model: 'glm-4.5-air' },
+  deepseek: { apiKey: '', model: 'deepseek-v4-flash' }
 };
 
 export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigModalProps) {
@@ -37,6 +37,13 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [showKey, setShowKey] = useState(false);
+
+  // Test connection state
+  const [testStatus, setTestStatus] = useState<{ loading: boolean; success: boolean | null; message: string }>({
+    loading: false,
+    success: null,
+    message: ''
+  });
 
   // Load from local storage
   useEffect(() => {
@@ -50,9 +57,9 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
           parsed = {
             activeProvider: 'gemini',
             gemini: { apiKey: '', model: 'gemini-3.5-flash' },
-            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-V3' },
-            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4-flash' },
-            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-chat' }
+            siliconflow: parsed?.siliconflow || { apiKey: '', model: 'deepseek-ai/DeepSeek-R1' },
+            zhipu: parsed?.zhipu || { apiKey: '', model: 'glm-4.5-air' },
+            deepseek: parsed?.deepseek || { apiKey: '', model: 'deepseek-v4-flash' }
           };
           needsWrite = true;
         }
@@ -74,15 +81,15 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
             },
             siliconflow: {
               apiKey: parsedConfig.siliconflow?.apiKey || '',
-              model: parsedConfig.siliconflow?.model || 'deepseek-ai/DeepSeek-V3'
+              model: parsedConfig.siliconflow?.model || 'deepseek-ai/DeepSeek-R1'
             },
             zhipu: {
               apiKey: parsedConfig.zhipu?.apiKey || '',
-              model: parsedConfig.zhipu?.model || 'glm-4-flash'
+              model: parsedConfig.zhipu?.model || 'glm-4.5-air'
             },
             deepseek: {
               apiKey: parsedConfig.deepseek?.apiKey || '',
-              model: parsedConfig.deepseek?.model || 'deepseek-chat'
+              model: parsedConfig.deepseek?.model || 'deepseek-v4-flash'
             }
           };
           setConfig(updated);
@@ -99,6 +106,7 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
         console.error('Failed to load API keys config from local storage', e);
       }
       setShowKey(false);
+      setTestStatus({ loading: false, success: null, message: '' });
     }
   }, [isOpen]);
 
@@ -110,10 +118,12 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
     
     // Switch tab
     setActiveTab(tab);
-    setApiKey(currentConfig[tab].apiKey);
-    setModel(currentConfig[tab].model);
+    setApiKey(currentConfig[tab].apiKey || '');
+    setModel(currentConfig[tab].model || DEFAULT_CONFIGS[tab].model);
     setShowKey(false);
     setConfig(currentConfig);
+    // Reset test status when switching tabs
+    setTestStatus({ loading: false, success: null, message: '' });
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -129,6 +139,58 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
     localStorage.setItem('lean_study_api_config', JSON.stringify(finalConfig));
     onSave();
     onClose();
+  };
+
+  const handleTestConnection = async () => {
+    if (!apiKey.trim()) {
+      setTestStatus({
+        loading: false,
+        success: false,
+        message: '请先填入完整的 API 密钥 (API Key) 再进行连接测试。'
+      });
+      return;
+    }
+
+    setTestStatus({
+      loading: true,
+      success: null,
+      message: '正在通过安全的后端代测服务器进行网络连通性验证，请稍候...'
+    });
+
+    try {
+      const response = await fetch('/api/test-llm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          provider: activeTab,
+          apiKey: apiKey.trim(),
+          model: model.trim()
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTestStatus({
+          loading: false,
+          success: true,
+          message: data.message || '连接连通测试成功！'
+        });
+      } else {
+        setTestStatus({
+          loading: false,
+          success: false,
+          message: data.message || '连通性测试未通过，请检查所选渠道对应的 API Key、网络状况与对应配额。'
+        });
+      }
+    } catch (err: any) {
+      setTestStatus({
+        loading: false,
+        success: false,
+        message: `网络请求失败: ${err.message || err}`
+      });
+    }
   };
 
   const handleClearCurrent = () => {
@@ -267,15 +329,49 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
                   </label>
                   <span className="text-[9px] text-[var(--text-muted)] scale-90 origin-right">支持自定义更高级模型</span>
                 </div>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="例如: gemini-3.5-flash / deepseek-chat"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-[var(--border-color)] text-[var(--text-main)] font-mono text-xs focus:ring-1 focus:ring-[var(--accent-primary)] focus:outline-none"
-                  required
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="例如: gemini-3.5-flash / deepseek-chat"
+                    className="flex-grow px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-[var(--border-color)] text-[var(--text-main)] font-mono text-xs focus:ring-1 focus:ring-[var(--accent-primary)] focus:outline-none"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={testStatus.loading}
+                    className="px-4 py-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-main)] font-semibold bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 select-none text-[11px]"
+                  >
+                    {testStatus.loading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-primary)]" />
+                    ) : (
+                      <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                    )}
+                    <span>测试连通性</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Connection Test feedback */}
+              {testStatus.success !== null && (
+                <div className={`p-3 rounded-xl border flex items-start gap-2.5 text-[11px] leading-normal ${
+                  testStatus.success
+                    ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-rose-50/50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 text-rose-700 dark:text-rose-400'
+                }`}>
+                  {testStatus.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-grow">
+                    <p className="font-bold">{testStatus.success ? '连接成功' : '连接失败'}</p>
+                    <p className="opacity-90 mt-0.5 whitespace-pre-wrap">{testStatus.message}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Model Note Callouts */}
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[var(--border-color)]/30 text-[11px] leading-relaxed text-[var(--text-muted)] space-y-1 mt-1">
@@ -285,9 +381,9 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
                 </p>
                 <ul className="list-disc list-inside space-y-0.5 text-[10px] pl-1">
                   <li><b>Gemini</b>: 推荐 <code>gemini-3.5-flash</code> 或更高版本</li>
-                  <li><b>硅基流动</b>: 推荐 <code>deepseek-ai/DeepSeek-V3</code></li>
-                  <li><b>智谱清言</b>: 推荐 <code>glm-4-flash</code> / <code>glm-4-plus</code></li>
-                  <li><b>DeepSeek</b>: 推荐使用官方渠道：<code>deepseek-chat</code></li>
+                  <li><b>硅基流动</b>: 默认 <code>deepseek-ai/DeepSeek-R1</code></li>
+                  <li><b>智谱清言</b>: 默认 <code>glm-4.5-air</code></li>
+                  <li><b>DeepSeek</b>: 默认使用官方渠道：<code>deepseek-v4-flash</code></li>
                 </ul>
               </div>
 
